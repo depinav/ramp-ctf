@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
+const initUrl =
+  "https://tns4lpgmziiypnxxzel5ss5nyu0nftol.lambda-url.us-east-1.on.aws/challenge";
+
 async function fetchBody(url?: string) {
-  const response = await fetch(
-    url ||
-      "https://tns4lpgmziiypnxxzel5ss5nyu0nftol.lambda-url.us-east-1.on.aws/challenge"
-  );
+  const response = await fetch(url || initUrl);
   if (!response.ok) throw new Error(`Response status: ${response.status}`);
 
   return await response.text();
@@ -13,7 +13,7 @@ async function fetchBody(url?: string) {
 function traverseTree(elementList: HTMLCollection) {
   let result = "";
 
-  for (const element of elementList) {
+  for (const element of Array.from(elementList)) {
     const nodeName = element.nodeName.toLowerCase();
     if (element.hasChildNodes()) {
       const dataID = element.getAttribute("data-id");
@@ -37,7 +37,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [displayElement, setDisplayElement] = useState<string[]>([]);
   const [body, setBody] = useState<HTMLDivElement | null>();
-  const [resultURL, setResultURL] = useState("");
+  const [flag, setFlag] = useState("");
   const index = useRef(0);
 
   useEffect(() => {
@@ -49,42 +49,42 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let interval: number;
-    if (!resultURL) {
-      interval = setInterval(() => {
-        setDisplayElement((old) => [...old, "."]);
-        index.current += 1;
-        if (index.current > 3) {
-          index.current = 0;
-          setDisplayElement([]);
-        }
-      }, 250);
-    } else {
-      interval = setInterval(() => {
-        setDisplayElement((old) => {
-          return [...old, resultURL[index.current]];
-        });
-        index.current += 1;
-        if (index.current >= resultURL.length) {
-          clearInterval(interval);
-        }
-      }, 500);
-    }
-    return () => clearInterval(interval);
-  }, [resultURL]);
-
-  useEffect(() => {
     if (isLoading && body) {
       const result = traverseTree(body.getElementsByTagName("section"));
       fetchBody(result).then((res) => {
-        console.log("🚀 ~ App ~ res:", res);
-        setDisplayElement([res[0]]);
-        index.current = 0;
-        setResultURL(res);
         setIsLoading(false);
+        setDisplayElement([]);
+        setFlag(res);
+        index.current = 0;
       });
     }
   }, [body, isLoading]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDisplayElement((old) => [...old, "."]);
+      index.current += 1;
+      if (index.current > 3) {
+        index.current = 0;
+        setDisplayElement([]);
+      }
+    }, 250);
+    if (!isLoading) clearInterval(interval);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log([...displayElement, flag[index.current]]);
+      setDisplayElement([...displayElement, flag[index.current]]);
+      index.current += 1;
+      if (index.current >= flag.length) {
+        clearInterval(interval);
+      }
+    }, 500);
+    if (!flag) clearInterval(interval);
+    return () => clearInterval(interval);
+  }, [displayElement, flag]);
 
   return (
     <div>
